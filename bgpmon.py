@@ -30,22 +30,21 @@ args = parser.parse_args()
 def run_config():
     neighbor_settings = {}
     try:
-        process = subprocess.Popen(
-            ["vtysh", "-c", "show run"], stdout=subprocess.PIPE)
+        process = subprocess.run(["vtysh", "-c", "show run"], stdout=subprocess.PIPE)
     except IOError:
-        print "ZBX_NOTSUPPORTED"
+        print("ZBX_NOTSUPPORTED")
         sys.exit(1)
-    out, err = process.communicate()
-    pattern = r'neighbor\s*([0-9.]+)\s*(maximum-prefix|description|remote-as)'\
-        '\s*([\w-]+)'
-    for line in out.split("/n"):
-        neighbors = (re.findall(pattern, line))
 
-    for neighbor in neighbors:
-        if neighbor_settings.get(neighbor[0]):
-            neighbor_settings[neighbor[0]].update({neighbor[1]: neighbor[2]})
-        else:
-            neighbor_settings[neighbor[0]] = {neighbor[1]: neighbor[2]}
+    out = process.stdout.decode('utf-8')
+    pattern = r'^\s+neighbor\s*([0-9a-fA-F.:]+)\s*(maximum-prefix|description|remote-as)\s*(.*)'
+    neighbors = {}
+    for line in out.split('\n'):
+        neighbors = (re.findall(pattern, line))
+        for neighbor in neighbors:
+            if neighbor_settings.get(neighbor[0]):
+                neighbor_settings[neighbor[0]].update({neighbor[1]: neighbor[2]})
+            else:
+                neighbor_settings[neighbor[0]] = {neighbor[1]: neighbor[2]}
 
     with open(JSONFILE, 'w') as f:
         json.dump({"neighbor_settings": neighbor_settings}, f)
@@ -53,25 +52,18 @@ def run_config():
     return {"neighbor_settings": neighbor_settings}
 
 
-def bgp_summary():
+def bgp_neighbor_state(neighbor_addr):
     result = []
     try:
-        process = subprocess.Popen(
-            ["vtysh", "-c", "show ip bgp summary"], stdout=subprocess.PIPE)
+        process = subprocess.run(["vtysh", "-c", "show bgp nei " + neighbor_addr + " json"], stdout=subprocess.PIPE)
     except IOError:
         print("ZBX_NOTSUPPORTED")
         sys.exit(1)
 
-    out, err = process.communicate()
-    for line in out.split("\n"):
-        out = (re.findall(r'^([\w.]+)(\s+\S+){8}([\w)(\s]+$)', line))
-        if out:
-            result.append({out[0][0]: {"state": out[0][2].strip()}})
+    out = process.stdout.decode('utf-8')
+    bgp_nei = json.loads(out)
 
-    with open(JSONFILE, 'w') as f:
-        json.dump({"neighbors": result}, f)
-
-    return {"neighbors": result}
+    return bgp_nei[neighbor_addr]['bgpState']
 
 if __name__ == '__main__':
     json_cache = None
@@ -83,14 +75,8 @@ if __name__ == '__main__':
                 json_cache = json.load(f)
 
     if args.action == 'neighbor_state' and args.n:
-        if not json_cache or not json_cache.get("neighbors"):
-            json_cache = bgp_summary()
-
-        for n in json_cache["neighbors"]:
-            if n.get(args.n):
-                value = n.get(args.n)
-                result = VAL_MAP.get(value["state"], value)
-                break
+        value = bgp_neighbor_state(args.n)
+        result = VAL_MAP.get(value, value)
 
     if args.action == 'discovery':
         if not json_cache or not json_cache.get("neighbor_settings"):
