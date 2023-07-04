@@ -1,0 +1,69 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    -
+      uuid: 2d3e344a602f425b861948789ae17e59
+      name: 'BGP Routers'
+  templates:
+    -
+      uuid: c330eb588d40488887f3c1cfe115f118
+      template: 'FRR BGP Sessions'
+      name: 'FRR BGP Sessions'
+      groups:
+        -
+          name: 'BGP Routers'
+      discovery_rules:
+        -
+          uuid: d5770eba8d414376badcddc8ab60dde5
+          name: 'BGP peers discovery'
+          key: bgp.peers.discovery
+          delay: 1h
+          item_prototypes:
+            -
+              uuid: 794cfc38989541e080329c213a26fdca
+              name: 'BGP {#PEER_IP} ({#DESCRIPTION}) state'
+              key: 'bgp.peer.state[{#PEER_IP}]'
+              history: 10d
+              trends: '0'
+              value_type: TEXT
+              tags:
+                -
+                  tag: Application
+                  value: 'FRR BGP sessions'
+              trigger_prototypes:
+                -
+                  uuid: cbafd577d791446bb79070ab783ac9dd
+                  expression: 'last(/FRR BGP Sessions/bgp.peer.state[{#PEER_IP}])<-1'
+                  name: 'BGP session - {#PEER_IP} ({#DESCRIPTION}) is down'
+                  priority: HIGH
+                  description: 'Last value: {#ITEM.LASTVALUE1}.'
+                  manual_close: 'YES'
+      valuemaps:
+        -
+          uuid: d10694e9580947b184fe10f07e15421d
+          name: 'FRR BGP peers state'
+          mappings:
+            -
+              value: '-1'
+              newvalue: 'Idle (Admin)'
+            -
+              value: '-2'
+              newvalue: 'Idle (PfxCt)'
+            -
+              value: '-3'
+              newvalue: Idle
+            -
+              value: '-4'
+              newvalue: Connect
+            -
+              value: '-5'
+              newvalue: Active
+            -
+              value: '-6'
+              newvalue: OpenSent
+            -
+              value: '-7'
+              newvalue: OpenConfirm
+            -
+              value: '0'
+              newvalue: Established
