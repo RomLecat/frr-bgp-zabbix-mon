@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     if args.action == 'neighbor_state' and args.n:
         value = bgp_neighbor_state(args.n)
-        result = VAL_MAP.get(value, value)
+        result = str(VAL_MAP.get(value, value)['state'])
 
     if args.action == 'discovery':
         if not json_cache or not json_cache.get("neighbor_settings"):
@@ -91,9 +91,10 @@ if __name__ == '__main__':
                 "{#DESCRIPTION}": description,
                 "{#MAX-PREFIX}": maximum_prefix}
             result["data"].append(value)
+            result = json.dumps(result, indent=4, sort_keys=True)
 
     if not result:
         print("ZBX_NOTSUPPORTED")
         sys.exit(1)
 
-    print(json.dumps(result, indent=4, sort_keys=True))
+    print(result)
