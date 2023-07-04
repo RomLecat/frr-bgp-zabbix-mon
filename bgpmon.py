@@ -8,14 +8,14 @@ import os
 import time
 
 VAL_MAP = {
+    "Established": {"state": 0},
     "Idle (Admin)": {"state": -1},
     "Idle (PfxCt)": {"state": -2},
     "Idle": {"state": -3},
     "Connect": {"state": -4},
     "Active": {"state": -5},
     "OpenSent": {"state": -6},
-    "OpenConfirm": {"state": -7},
-    "Established": {"state": -8}
+    "OpenConfirm": {"state": -7}
 }
 
 JSONFILE = '/tmp/bgpmon.json'
